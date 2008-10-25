@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: Relocate upload
-Plugin URI: http://freakytrigger.co.uk/#
+Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.1
-Author URI: http://freakytrigger.co.uk/
+Version: 0.10
+Author URI: http://freakytrigger.co.uk/author/alan
 */ 
 
 // all paths are relative to the server document home
@@ -51,8 +51,9 @@ if (isset($_GET['ru_folder']))
 	{	$result="WAIT";
 		// move any thumbnails too
 		$pm=get_post_meta($id,"_wp_attachment_metadata", true);
-		foreach($pm['sizes'] as $size=>$pm_size)
-			rename(dirname($attachment_path)."/".$pm_size['file'],dirname($new_path)."/".$pm_size['file']);
+		if ($pm['sizes'])
+			foreach($pm['sizes'] as $size=>$pm_size)
+				rename(dirname($attachment_path)."/".$pm_size['file'],dirname($new_path)."/".$pm_size['file']);
 
 		// update the metadata to reflect the new location
 		$pm['file']=$new_path;
