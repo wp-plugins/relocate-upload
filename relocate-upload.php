@@ -4,8 +4,8 @@ Plugin Name: Relocate upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.10
-Author URI: http://freakytrigger.co.uk/author/alan
+Version: 0.12
+Author URI: http://freakytrigger.co.uk/author/alan/
 */ 
 
 // all paths are relative to the server document home
@@ -77,9 +77,16 @@ if (isset($_GET['ru_folder']))
 
 
 // get the JS into the admin pages to run the AJAX request
+// and to add the media library 'folder' filter
 add_action('admin_head', 'relocate_upload_js');
 function relocate_upload_js()
-{	?><script>	
+{	if (   strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php")===false
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/upload.php")===false
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media.php")===false )
+		return;
+
+	// first the basic ajax for the relocating folder
+	?><script>	
 	function ru_request_move($element)
 	{	jQuery($element).attr({disabled: true});
 		jQuery($element).siblings("span").html(' Moving...');
@@ -106,7 +113,43 @@ function relocate_upload_js()
 			}
 		);
 	}
-	</script><?
+	<?
+
+	
+	// smuggle the menu into place with JS - no proper hook to get it in place
+	// compile the HTML
+	if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
+	$i=0;
+	$menu="<option value='' >All folders</option>";
+	foreach($ru_folders as $ru_folder)
+	{	$selected= ($_GET['ru_index']==="$i")?" selected":"";
+		$menu.="<option value='".($i++)."'".$selected.">".$ru_folder['name']."</option>";
+	}
+
+	// get it in place
+	?>	jQuery(document).ready(function() { jQuery("select[name='m']").after("<select name='ru_index'><? echo $menu ?></select>");})
+		</script>
+	<?
+}
+
+
+
+//
+add_filter('posts_where', 'relocate_upload_library_filter');
+function relocate_upload_library_filter($where)
+{	if ($_GET['ru_index']==null)
+		return $where;
+	
+	if (   strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php")===false
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/upload.php")===false )
+		return $where;
+		
+	if ( strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php") && ($_GET['tab']!="library"))
+		return $where;
+	
+	if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
+	$where.=" AND wp_posts.guid LIKE '%".($ru_folders[$_GET['ru_index']]['path'])."%'";
+	return $where;
 }
 
 
@@ -144,7 +187,6 @@ function relocate_upload_menu($form_fields, $post)
 	return $form_fields;
 
 }
-
 
 
 
