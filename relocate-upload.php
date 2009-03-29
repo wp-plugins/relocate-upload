@@ -4,7 +4,7 @@ Plugin Name: Relocate upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.12
+Version: 0.13
 Author URI: http://freakytrigger.co.uk/author/alan/
 */ 
 
@@ -34,7 +34,7 @@ if (isset($_GET['ru_folder']))
 
 	// find attachment current info: PATH, DATE
 	$id = $_GET['id'];
-	$attachment_path=get_post_meta($id,"_wp_attached_file",true);
+	$attachment_path=get_attached_file( $id, true);	//$attachment_path=get_post_meta($id,"_wp_attached_file",true);
 	$attachment_record = & $wpdb->get_row($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d LIMIT 1", $id));
 	$attachment_date = $attachment_record->post_date;
 	$attachment_guid = $attachment_record->guid;
@@ -82,6 +82,7 @@ add_action('admin_head', 'relocate_upload_js');
 function relocate_upload_js()
 {	if (   strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php")===false
 		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/upload.php")===false
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-new.php")===false
 		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media.php")===false )
 		return;
 
@@ -103,8 +104,9 @@ function relocate_upload_js()
 
 				if (data.substring(0,5)=='DONE:')
 				{	jQuery($element).siblings("span").html('');
-					$m_item.find("tr.url input").val(data.substring(6));
-					$m_item.find("tr.url button:eq(1)").val(data.substring(6));
+					$m_item.find("tr.url input").val('');
+					$m_item.find("tr.url button:contains('File URL')").attr('title',data.substring(6));
+					$m_item.find("tr.url button:contains('Audio Player')").attr('title','[audio:'+data.substring(6)+']');
 				}
 				else if (data=='')
 					jQuery($element).siblings("span").html(' Error');
@@ -264,5 +266,18 @@ function replace_month_year($path, $date)
 	$path=str_replace("%MONTH%",substr($date,5,2),$path);
 	return $path;
 }
+
+
+// thing is if you have an absolute path to your file, WP will give you an url like
+// http://domain.co.uk/path_to/wp-content/uploads//home/useraccount/public_html/another_path_to/media/media_item.gif
+// note the double /
+//
+// as SERVER_DOC_ROOT = /home/useraccount/public_html
+//
+// we do a search for (http://.*?/).*?/SERVER_DOC_ROOT/ and replace with \1
+
+
+add_filter( 'wp_get_attachment_url', "wp_get_attachment_url_absolute_path_fix");
+function wp_get_attachment_url_absolute_path_fix($url) {	return preg_replace('#(http://.*?/).*?/'.(SERVER_DOC_ROOT).'/#','\1',$url); }
 
 ?>
