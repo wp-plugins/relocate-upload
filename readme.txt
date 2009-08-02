@@ -2,18 +2,14 @@
 Contributors: alanft
 Tags: admin, upload, folder, relocate
 Requires at least: 2.6
-Tested up to: 2.6.3
-Stable tag: 0.11
+Tested up to: 2.8.2
+Stable tag: 0.14
 
 Wordpress uploads media to one pre-set folder. Relocate Upload lets you switch media to other folders.
 
 
 == Description ==
 Relocate Upload lets you specify folders, and adds a menu to the Media Library (and Edit Media admin page) that lets you switch media items between these folders and WPs default upload location.
-
-= Version History =
-0.11 - FIrst tiny bug fix (no thumbnails caused an error)
-0.10 - Just starting out, something to get it working
 
 == Installation ==
 
@@ -37,3 +33,10 @@ That's not a question. Let me know on the [WP Forums](http://wordpress.org/tags/
 
 1. A simple menu switches media assets to your favourite locations. All through the magic of AJAX.
 2. A simple settings page to define the folder locations.
+
+== Changelog ==
+0.14 - Many small fixes (check for existing files, database prefix bug fix, jquery enqueue, 2.8 media library update, path 'fixing')
+
+0.11 - FIrst tiny bug fix (no thumbnails caused an error)
+
+0.10 - Just starting out, something to get it working
