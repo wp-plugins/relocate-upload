@@ -4,22 +4,23 @@ Plugin Name: Relocate upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.14
+Version: 0.20
 Author URI: http://freakytrigger.co.uk/author/alan/
 */ 
 
 // all paths are relative to the server document home
 define('SERVER_DOC_ROOT', $GLOBALS['_SERVER']['DOCUMENT_ROOT']);
 
+if( is_admin() )
+{
+	add_action('wp_ajax_relocate_upload', 'relocate_upload_js_action');
+}
 
 // Move folder request handled when called by GET AJAX
-if (isset($_GET['ru_folder']))
-{	// WP setup and function access
-	define('WP_USE_THEMES', false);
-	require_once(urldecode($_GET['abspath']).'/wp-load.php'); // save us looking for it, it's passed as a GET parameter
+function relocate_upload_js_action()
+{	global $wpdb;
+	if (!isset($_GET['ru_folder'])) exit;
 	check_admin_referer('ru_request_move');
-	global $wpdb;
-
 
 	// find default path
 	$default_upload_path=str_replace(SERVER_DOC_ROOT,"",WP_CONTENT_DIR."/uploads/");
@@ -94,12 +95,11 @@ function relocate_upload_js()
 	function ru_request_move($element)
 	{	jQuery($element).attr({disabled: true});
 		jQuery($element).siblings("span").html(' Moving...');
-		jQuery.get(
-			"<?php echo WP_CONTENT_URL."/plugins/relocate-upload/relocate-upload.php"; ?>",
+		jQuery.get(ajaxurl,
 			{	ru_folder: $element.selectedIndex,
 				       id: $element.getAttribute('media_id'),
-				 _wpnonce: '<?php echo wp_create_nonce("ru_request_move") ?>',
-				  abspath: '<?php echo ABSPATH ?>'
+				   action: 'relocate_upload',
+				 _wpnonce: '<?php echo wp_create_nonce("ru_request_move") ?>'
 			},
 			function(data)
 			{	jQuery($element).attr({disabled: false});
