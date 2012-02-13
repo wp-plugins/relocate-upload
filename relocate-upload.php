@@ -4,22 +4,23 @@ Plugin Name: Relocate upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.13
+Version: 0.20
 Author URI: http://freakytrigger.co.uk/author/alan/
 */ 
 
 // all paths are relative to the server document home
 define('SERVER_DOC_ROOT', $GLOBALS['_SERVER']['DOCUMENT_ROOT']);
 
+if( is_admin() )
+{
+	add_action('wp_ajax_relocate_upload', 'relocate_upload_js_action');
+}
 
 // Move folder request handled when called by GET AJAX
-if (isset($_GET['ru_folder']))
-{	// WP setup and function access
-	define('WP_USE_THEMES', false);
-	require_once(urldecode($_GET['abspath']).'/wp-load.php'); // save us looking for it, it's passed as a GET parameter
+function relocate_upload_js_action()
+{	global $wpdb;
+	if (!isset($_GET['ru_folder'])) exit;
 	check_admin_referer('ru_request_move');
-	global $wpdb;
-
 
 	// find default path
 	$default_upload_path=str_replace(SERVER_DOC_ROOT,"",WP_CONTENT_DIR."/uploads/");
@@ -46,8 +47,9 @@ if (isset($_GET['ru_folder']))
 	$new_path=replace_month_year($new_path,$attachment_date);
 
 	// attempt to move the file
-	$result="FAIL";
-	if (rename($attachment_path,$new_path))
+	if(file_exists($new_path))
+		$result="FAIL: move will overwrite an existing file";
+	else if (rename($attachment_path,$new_path))
 	{	$result="WAIT";
 		// move any thumbnails too
 		$pm=get_post_meta($id,"_wp_attachment_metadata", true);
@@ -86,17 +88,18 @@ function relocate_upload_js()
 		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media.php")===false )
 		return;
 
+	wp_enqueue_script('jquery');
+	
 	// first the basic ajax for the relocating folder
 	?><script>	
 	function ru_request_move($element)
 	{	jQuery($element).attr({disabled: true});
 		jQuery($element).siblings("span").html(' Moving...');
-		jQuery.get(
-			"<? echo WP_CONTENT_URL."/plugins/relocate-upload/relocate-upload.php"; ?>",
+		jQuery.get(ajaxurl,
 			{	ru_folder: $element.selectedIndex,
 				       id: $element.getAttribute('media_id'),
-				 _wpnonce: '<? echo wp_create_nonce("ru_request_move") ?>',
-				  abspath: '<? echo ABSPATH ?>'
+				   action: 'relocate_upload',
+				 _wpnonce: '<?php echo wp_create_nonce("ru_request_move") ?>'
 			},
 			function(data)
 			{	jQuery($element).attr({disabled: false});
@@ -107,18 +110,19 @@ function relocate_upload_js()
 					$m_item.find("tr.url input").val('');
 					$m_item.find("tr.url button:contains('File URL')").attr('title',data.substring(6));
 					$m_item.find("tr.url button:contains('Audio Player')").attr('title','[audio:'+data.substring(6)+']');
+					$m_item.find("tr.image_url input").val(data.substring(6));
 				}
 				else if (data=='')
 					jQuery($element).siblings("span").html(' Error');
 				else
-					jQuery($element).siblings("span").html(' Failed');
+					jQuery($element).siblings("span").html(' ' + data);
 			}
 		);
 	}
-	<?
+	<?php
 
 	
-	// smuggle the menu into place with JS - no proper hook to get it in place
+	// smuggle the filter menu into place with JS - no proper hook to get it in place
 	// compile the HTML
 	if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
 	$i=0;
@@ -129,9 +133,9 @@ function relocate_upload_js()
 	}
 
 	// get it in place
-	?>	jQuery(document).ready(function() { jQuery("select[name='m']").after("<select name='ru_index'><? echo $menu ?></select>");})
+	?>	jQuery(document).ready(function() { jQuery("select[name='m']").after("<select name='ru_index'><?php echo $menu ?></select>");})
 		</script>
-	<?
+	<?php
 }
 
 
@@ -148,9 +152,10 @@ function relocate_upload_library_filter($where)
 		
 	if ( strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php") && ($_GET['tab']!="library"))
 		return $where;
-	
+
+	global $wpdb;
 	if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
-	$where.=" AND wp_posts.guid LIKE '%".($ru_folders[$_GET['ru_index']]['path'])."%'";
+	$where.=" AND $wpdb->posts.guid LIKE '%".($ru_folders[$_GET['ru_index']]['path'])."%'";
 	return $where;
 }
 
@@ -202,7 +207,11 @@ function RU_admin_options()
 	{	// generate ru_folders array
 		for($i=0; $i<count($_POST['ru_folder_name']); $i++)
 			if ($_POST['ru_folder_name'][$i] !="")
-				$ru_folders[]=array('name' => $_POST['ru_folder_name'][$i], 'path' => $_POST['ru_folder_path'][$i]);
+			{	$this_path=$_POST['ru_folder_path'][$i];
+				$this_path.=(substr($this_path, -1)!="/")?"/":"";
+				if (substr($this_path, 0,1)!="/")	$this_path="/".$this_path;
+				$ru_folders[]=array('name' => $_POST['ru_folder_name'][$i], 'path' => $this_path);
+			}
 
 		// save it as a WP option
 		update_option('relocate-upload-folders', $ru_folders);
@@ -223,34 +232,42 @@ function RU_admin_options()
 		
 	?>
 	<style>
-		li input {width:120px;}
-		li input + input {width:400px}
-		li.bad_folder input {border: 1px solid red;}
+		#ru_list li input {width:120px;}
+		#ru_list li input + input {width:400px}
+		#ru_list li.bad_folder input {border: 1px solid red;}
+		#ru_list li.bad_folder:after {content:" unwritable"}
+		#ru_list span.remove { margin-left:6px; display:inline-block; width: 10px; background: url('/wordpress/wp-admin/images/xit.gif') no-repeat center left; }
+		#ru_list span.remove:hover {background-position: center right; cursor:pointer}
 	</style>
-	<div class="wrap">   
+	<div class="wrap">
+	<div id="icon-options-general" class="icon32"><br /></div>
 	<h2>Relocate Upload &ndash; Locations</h2>
 	<form action="options-general.php?page=relocate-upload/relocate-upload.php" method="POST">
 	<div>
-		<ul>
-	<?
+		<p>Paths are relative to your blog's root folder: <b><?php echo SERVER_DOC_ROOT; ?></b></p>
+		<ul id="ru_list">
+	<?php
 		$disabled="disabled=true";
 		foreach($ru_folders as $ru_folder)
 		{	$bad_folder=($disabled=="" && $ru_folder['path'] && !is_writable(SERVER_DOC_ROOT.replace_month_year($ru_folder['path'],date("Y-m"))))?" class='bad_folder'":"";
 			echo "<li $bad_folder >";
 				echo "<input name='ru_folder_name[]' type='text' value='".$ru_folder['name']."' ".$disabled." />";
 				echo "<input name='ru_folder_path[]' type='text' value='".$ru_folder['path']."' ".$disabled." />";
-			echo"</li>";
+				if ($disabled=="" && $ru_folder['path'])
+					echo "<span class='remove' title='remove'>&nbsp;</span>";
+				if ($ru_folder['path']=="") echo " new location";
+			echo "</li>";
 			$disabled="";
 		}
 
 	?>
 		</ul>
-		<p>Use the last row to add a new location. To delete a location, blank its display name.</p>
-		<p>Paths are relative to the blog root <b><? echo SERVER_DOC_ROOT; ?></b>. An unwritable folder is indicated by a red border.</p>
-		<p class="submit"><input type="Submit" value="Update" /></p>
+		<p class="submit"><input type="Submit" value="Update" class="button-primary" /></p>
 	</div>
 	</form>
-	<?
+	<script>jQuery("#ru_list span.remove").click(function(){	jQuery(this).parent().remove();	});</script>
+	<?php
+
 }
 
 
