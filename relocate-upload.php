@@ -4,7 +4,7 @@ Plugin Name: Relocate upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
-Version: 0.20
+Version: 0.21
 Author URI: http://freakytrigger.co.uk/author/alan/
 */ 
 
@@ -85,7 +85,11 @@ function relocate_upload_js()
 {	if (   strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-upload.php")===false
 		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/upload.php")===false
 		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media-new.php")===false
-		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media.php")===false )
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/media.php")===false
+
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/post-new.php")===false
+		&& strpos($_SERVER['REQUEST_URI'], "/wp-admin/post.php")===false
+	)
 		return;
 
 	wp_enqueue_script('jquery');
@@ -103,14 +107,11 @@ function relocate_upload_js()
 			},
 			function(data)
 			{	jQuery($element).attr({disabled: false});
-				$m_item=jQuery($element).parents("div.media-item");
+				$m_item=jQuery($element).parents("div#post-body");
 
 				if (data.substring(0,5)=='DONE:')
 				{	jQuery($element).siblings("span").html('');
-					$m_item.find("tr.url input").val('');
-					$m_item.find("tr.url button:contains('File URL')").attr('title',data.substring(6));
-					$m_item.find("tr.url button:contains('Audio Player')").attr('title','[audio:'+data.substring(6)+']');
-					$m_item.find("tr.image_url input").val(data.substring(6));
+					$m_item.find('input[name="attachment_url"]').val(data.substring(6));
 				}
 				else if (data=='')
 					jQuery($element).siblings("span").html(' Error');
