@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Relocate upload
+Plugin Name: Relocate Upload
 Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
 Description: Moves uploads to special folders
 Author: Alan Trewartha
