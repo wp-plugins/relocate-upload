@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name: Relocate Upload
-Plugin URI: http://freakytrigger.co.uk/wordpress-setup/
-Description: Moves uploads to special folders
-Author: Alan Trewartha
-Version: 0.21
-Author URI: http://freakytrigger.co.uk/author/alan/
+Plugin Name: Relocate upload
+Plugin URI: http://wordpress.org/plugins/relocate-upload/
+Description: Moves uploads to special folders.
+Author: Tim Berneman
+Version: 0.22
+Author URI: http://www.extremewebdesign.biz/relocate-upload/
 */ 
 
 // all paths are relative to the server document home
@@ -15,6 +15,7 @@ if( is_admin() )
 {
 	add_action('wp_ajax_relocate_upload', 'relocate_upload_js_action');
 }
+
 
 // Move folder request handled when called by GET AJAX
 function relocate_upload_js_action()
@@ -39,7 +40,6 @@ function relocate_upload_js_action()
 	$attachment_record = & $wpdb->get_row($wpdb->prepare("SELECT * FROM $wpdb->posts WHERE ID = %d LIMIT 1", $id));
 	$attachment_date = $attachment_record->post_date;
 	$attachment_guid = $attachment_record->guid;
-
 
 	// find new path for attachment
 	$folder=$_GET['ru_folder'];
@@ -75,7 +75,6 @@ function relocate_upload_js_action()
 	echo "$result";
 	exit;
 }
-
 
 
 // get the JS into the admin pages to run the AJAX request
@@ -121,7 +120,6 @@ function relocate_upload_js()
 		);
 	}
 	<?php
-
 	
 	// smuggle the filter menu into place with JS - no proper hook to get it in place
 	// compile the HTML
@@ -140,8 +138,7 @@ function relocate_upload_js()
 }
 
 
-
-//
+// add relocate upload library filter
 add_filter('posts_where', 'relocate_upload_library_filter');
 function relocate_upload_library_filter($where)
 {	if ($_GET['ru_index']==null)
@@ -161,7 +158,6 @@ function relocate_upload_library_filter($where)
 }
 
 
-
 // hook in to the media library to make the extra control
 add_filter('attachment_fields_to_edit', 'relocate_upload_menu', 3, 2);
 function relocate_upload_menu($form_fields, $post)
@@ -172,12 +168,10 @@ function relocate_upload_menu($form_fields, $post)
 	if ( get_option( 'uploads_use_yearmonth_folders' ))
 		$default_upload_path.="%YEAR%/%MONTH%/";	
 
-
 	// get folder options, with default location added to the front
 	if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
 	array_unshift($ru_folders,array('name'=>"Default location", 'path' => $default_upload_path));
 	array_walk($ru_folders,'replace_month_year_cb', $attachment_date);
-
 
 	// compile menu, set selected item where path matches attachments current path
 	foreach($ru_folders as $ru_folder)
@@ -185,7 +179,6 @@ function relocate_upload_menu($form_fields, $post)
 		$menu.="<option $selected>".$ru_folder['name']."</option>";
 	}
 
-	
 	// this is how you add the menu
 	$form_fields['ru_location'] = array(
 		'label' => "Folder",
@@ -195,7 +188,6 @@ function relocate_upload_menu($form_fields, $post)
 	return $form_fields;
 
 }
-
 
 
 // put in the options page
@@ -208,10 +200,10 @@ function RU_admin_options()
 	{	// generate ru_folders array
 		for($i=0; $i<count($_POST['ru_folder_name']); $i++)
 			if ($_POST['ru_folder_name'][$i] !="")
-			{	$this_path=$_POST['ru_folder_path'][$i];
-				$this_path.=(substr($this_path, -1)!="/")?"/":"";
-				if (substr($this_path, 0,1)!="/")	$this_path="/".$this_path;
-				$ru_folders[]=array('name' => $_POST['ru_folder_name'][$i], 'path' => $this_path);
+			{	$this_path = $_POST['ru_folder_path'][$i];
+				$this_path .= (substr($this_path, -1)!="/")?"/":"";
+				if (substr($this_path, 0,1)!="/")	$this_path="/" . $this_path;
+				$ru_folders[] = array('name' => $_POST['ru_folder_name'][$i], 'path' => $this_path);
 			}
 
 		// save it as a WP option
@@ -220,7 +212,6 @@ function RU_admin_options()
 	else
 		// just read the WP option or use a blank array as default
 		if(!$ru_folders = get_option('relocate-upload-folders')) $ru_folders = array();
-
 
 	// prefix with default location
 	$default_upload_path=str_replace(SERVER_DOC_ROOT,"",WP_CONTENT_DIR."/uploads");
@@ -237,7 +228,7 @@ function RU_admin_options()
 		#ru_list li input + input {width:400px}
 		#ru_list li.bad_folder input {border: 1px solid red;}
 		#ru_list li.bad_folder:after {content:" unwritable"}
-		#ru_list span.remove { margin-left:6px; display:inline-block; width: 10px; background: url('/wordpress/wp-admin/images/xit.gif') no-repeat center left; }
+		#ru_list span.remove { margin-left:6px; display:inline-block; width: 10px; background: url('images/xit.gif') no-repeat center left; }
 		#ru_list span.remove:hover {background-position: center right; cursor:pointer}
 	</style>
 	<div class="wrap">
@@ -250,12 +241,17 @@ function RU_admin_options()
 	<?php
 		$disabled="disabled=true";
 		foreach($ru_folders as $ru_folder)
-		{	$bad_folder=($disabled=="" && $ru_folder['path'] && !is_writable(SERVER_DOC_ROOT.replace_month_year($ru_folder['path'],date("Y-m"))))?" class='bad_folder'":"";
+		{
+			// create directory if needed
+			$new_dir = SERVER_DOC_ROOT . replace_month_year( $ru_folder['path'], date("Y-m") );
+			if(!file_exists($new_dir))	mkdir( $new_dir, 0755, true );
+			
+			$bad_folder=($disabled=="" && $ru_folder['path'] && !is_writable(SERVER_DOC_ROOT.replace_month_year($ru_folder['path'],date("Y-m"))))?" class='bad_folder'":"";
 			echo "<li $bad_folder >";
 				echo "<input name='ru_folder_name[]' type='text' value='".$ru_folder['name']."' ".$disabled." />";
 				echo "<input name='ru_folder_path[]' type='text' value='".$ru_folder['path']."' ".$disabled." />";
 				if ($disabled=="" && $ru_folder['path'])
-					echo "<span class='remove' title='remove'>&nbsp;</span>";
+					echo "<span class='remove' title='remove location'>&nbsp;</span>";
 				if ($ru_folder['path']=="") echo " new location";
 			echo "</li>";
 			$disabled="";
@@ -272,11 +268,11 @@ function RU_admin_options()
 }
 
 
-
 // callback to replace year and month tokens in the ru_folders array
 function replace_month_year_cb(&$value, $key, $date)
 {	$value['path']= replace_month_year($value['path'], $date);
 }
+
 
 // generic token replacement
 function replace_month_year($path, $date)
@@ -293,7 +289,6 @@ function replace_month_year($path, $date)
 // as SERVER_DOC_ROOT = /home/useraccount/public_html
 //
 // we do a search for (http://.*?/).*?/SERVER_DOC_ROOT/ and replace with \1
-
 
 add_filter( 'wp_get_attachment_url', "wp_get_attachment_url_absolute_path_fix");
 function wp_get_attachment_url_absolute_path_fix($url) {	return preg_replace('#(http://.*?/).*?/'.(SERVER_DOC_ROOT).'/#','\1',$url); }
