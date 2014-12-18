@@ -3,8 +3,8 @@
 Plugin Name: Relocate upload
 Plugin URI: http://wordpress.org/plugins/relocate-upload/
 Description: Moves uploads to special folders.
-Author: Tim Berneman
-Version: 0.22
+Author: Alan Trewartha, Tim Berneman
+Version: 0.23
 Author URI: http://www.extremewebdesign.biz/relocate-upload/
 */ 
 

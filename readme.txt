@@ -1,9 +1,9 @@
 === Relocate Upload ===
-Contributors: alanft,tberneman
+Contributors: alanft, tberneman
 Tags: admin, upload, folder, relocate
 Requires at least: 2.8
-Tested up to: 3.7.1
-Stable tag: 0.22
+Tested up to: 4.1
+Stable tag: 0.23
 
 Wordpress uploads media to one pre-set folder. Relocate Upload lets you switch media to other folders.
 
@@ -35,11 +35,14 @@ And how about plugins that have 'default folders'?
 
 
 == Changelog ==
+0.23 - Checked and verified compatibility up to WordPress 4.1
+
+
 0.22 - Plugin officially taken over by Tim Berneman (tberneman).
        Fixed problem where "remove location" button was not showing up.
-	    * Created "images" folder and put "xit.gif" in it.
-	    * Does NOT delete the folder or any files in it.
-	   Folder is created if it doesn't exist when adding new location.
+         * Created "images" folder and put "xit.gif" in it.
+         * Does NOT delete the folder or any files in it.
+       Folder is created if it doesn't exist when adding new location.
 
 0.21 - Fixed problem where folder dropdown was not showing in Media edit screen on newer versions of WordPress.
 
